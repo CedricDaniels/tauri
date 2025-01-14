@@ -3799,11 +3799,18 @@ fn handle_event_loop<T: UserEvent>(
               .map(|w| (w.inner.clone(), w.webviews.clone()))
             {
               let size = size.to_logical::<f32>(window.scale_factor());
-              for webview in webviews {
+              for (index, webview) in webviews.iter().enumerate() {
+                if webviews.len() > 1 && index == 0 {
+                  continue;
+                }
                 if let Some(b) = &*webview.bounds.lock().unwrap() {
+                  let bound_rect = webview.bounds().unwrap();
+                  let mut position = LogicalPosition::new(size.width * b.x_rate, size.height * b.y_rate).into();
+                  if index == 1 {
+                    position = bound_rect.position;
+                  }
                   if let Err(e) = webview.set_bounds(wry::Rect {
-                    position: LogicalPosition::new(size.width * b.x_rate, size.height * b.y_rate)
-                      .into(),
+                    position,
                     size: LogicalSize::new(size.width * b.width_rate, size.height * b.height_rate)
                       .into(),
                   }) {

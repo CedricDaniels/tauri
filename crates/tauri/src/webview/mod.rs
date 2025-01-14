@@ -228,9 +228,9 @@ macro_rules! unstable_struct {
     }
 }
 
-unstable_struct!(
-  #[doc = "A builder for a webview."]
-  struct WebviewBuilder<R: Runtime> {
+// unstable_struct!(
+//   #[doc = "A builder for a webview."]
+  pub struct WebviewBuilder<R: Runtime> {
     pub(crate) label: String,
     pub(crate) webview_attributes: WebviewAttributes,
     pub(crate) web_resource_request_handler: Option<Box<WebResourceRequestHandler>>,
@@ -238,7 +238,7 @@ unstable_struct!(
     pub(crate) on_page_load_handler: Option<Box<OnPageLoad<R>>>,
     pub(crate) download_handler: Option<Arc<DownloadHandler<R>>>,
   }
-);
+// );
 
 #[cfg_attr(not(feature = "unstable"), allow(dead_code))]
 impl<R: Runtime> WebviewBuilder<R> {
