@@ -121,6 +121,7 @@ use std::{
   },
   thread::{current as current_thread, ThreadId},
 };
+use tao::event::{ElementState, MouseButton};
 
 pub type WebviewId = u32;
 type IpcHandler = dyn Fn(Request<String>) + 'static;
@@ -2239,6 +2240,8 @@ pub struct WindowWrapper {
   is_window_transparent: bool,
   #[cfg(windows)]
   surface: Option<softbuffer::Surface<Arc<Window>, Arc<Window>>>,
+  drag_enabled:bool,
+  last_drag_position: PhysicalPosition<f64>,
 }
 
 impl fmt::Debug for WindowWrapper {
@@ -3599,6 +3602,8 @@ fn handle_user_message<T: UserEvent>(
             is_window_transparent,
             #[cfg(windows)]
             surface,
+            drag_enabled:false,
+            last_drag_position:PhysicalPosition{x:0.,y:0.},
           },
         );
         sender.send(Ok(Arc::downgrade(&window))).unwrap();
@@ -3790,6 +3795,49 @@ fn handle_event_loop<T: UserEvent>(
                 }
               }
             }
+          }
+          TaoWindowEvent::MouseInput {
+            state: ElementState::Pressed,
+            button: MouseButton::Left,
+            ..
+          }  => {
+            println!("Pressed");
+            if let Some(window) = windows.0.borrow_mut().get_mut(&window_id) {
+              window.drag_enabled=true;
+              window.last_drag_position = window.inner.clone().unwrap().cursor_position().unwrap();
+            }
+          }
+          TaoWindowEvent::MouseInput {
+            state: ElementState::Released,
+            button: MouseButton::Left,
+            ..
+          }=> {
+            println!("Released");
+            if let Some(window) = windows.0.borrow_mut().get_mut(&window_id) {
+              window.drag_enabled=false;
+            }
+          }
+          TaoWindowEvent::CursorMoved { position, .. } => {
+            if let Some(window) = windows.0.borrow_mut().get_mut(&window_id) {
+              if window.drag_enabled {
+                let win = window.inner.as_ref().unwrap();
+                let last_cursor_position = window.last_drag_position;
+                let position = win.cursor_position().unwrap();
+                let dx = (position.x - last_cursor_position.x) as i32;
+                let dy = (position.y - last_cursor_position.y) as i32;
+
+
+                let win_position = win.outer_position().unwrap();
+                win.set_outer_position(PhysicalPosition::new(
+                  win_position.x + dx,
+                  win_position.y + dy,
+                ));
+                let new_cursor_position = win.cursor_position().unwrap();
+
+                window.last_drag_position = new_cursor_position;
+              }
+            }
+
           }
           TaoWindowEvent::Resized(size) => {
             if let Some((Some(window), webviews)) = windows
@@ -4110,6 +4158,8 @@ fn create_window<T: UserEvent, F: Fn(RawWindow) + Send + 'static>(
     is_window_transparent,
     #[cfg(windows)]
     surface,
+    drag_enabled:false,
+    last_drag_position:PhysicalPosition{x:0.,y:0.},
   })
 }
 
